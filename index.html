@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Quicksand&display=swap"
+      rel="stylesheet"
+    />
+    <title>NodeChat</title>
+    <style>
+      * {
+        font-family: "Quicksand", sans-serif;
+        font-size: 20px;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font: 13px Helvetica, Arial;
+      }
+      form {
+        background: slategray;
+        padding: 3px;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+      }
+      form input {
+        border: 0;
+        padding: 10px;
+        width: 90%;
+        margin-right: 0.5%;
+      }
+      form button {
+        width: 9%;
+        background: dodgerblue;
+        border: none;
+        padding: 10px;
+      }
+      #messages {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+      }
+      #messages li {
+        padding: 5px 10px;
+      }
+      #messages li:nth-child(odd) {
+        background: #eee;
+      }
+    </style>
+  </head>
+  <body>
+    <ul id="messages"></ul>
+    <div><br /><br /></div>
+    <form id="chat-form" action="">
+      <input id="message-box" autocomplete="off" /><button>Send</button>
+    </form>
+  </body>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+  <script>
+    var name = prompt("Welcome to the chat!\n\nPlease enter your name.");
+    if (name == null || name == "") {
+      name = "no name";
+    }
+
+    const randomHex = "#" + Math.floor(Math.random() * 16777215).toString(16);
+
+    var socket = io.connect("", {
+      query: "name=" + name + "&color=" + randomHex
+    });
+
+    $("#chat-form").on("submit", function(e) {
+      e.preventDefault();
+      // emit chat message event back to server-socket
+      if ($("#message-box").val() !== "") {
+        socket.emit("chat message", {
+          sender: name,
+          body: $("#message-box").val(),
+          color: randomHex
+        });
+        $("#message-box").val("");
+      }
+    });
+
+    socket.on("user connection", function(connection) {
+      if (connection.user !== name)
+        $("#messages").append(
+          $("<li>")
+            .text(connection.user + " has joined the chat.")
+            .css("color", connection.color)
+        );
+      else {
+        var alsoInChat = "";
+        let list = connection.userlist;
+        list.pop();
+        if (list.length === 0)
+          alsoInChat = "Seems like you're alone at the moment.";
+        else if (list.length === 1)
+          alsoInChat = list[0] + " is also here. Say hi!";
+        else if (list.length === 2)
+          alsoInChat = list[0] + " and " + list[1] + " are also here. Say hi!";
+        else {
+          for (let i = 0; i < list.length; i++) {
+            alsoInChat += list[i];
+            if (i < list.length - 2) alsoInChat += ", ";
+            else if (i === list.length - 2) alsoInChat += ", and ";
+            else alsoInChat += " are also here. Say hi!";
+          }
+        }
+        $("#messages").append(
+          $("<li>")
+            .text("Welcome to the chat, " + name + "! " + alsoInChat)
+            .css("color", connection.color)
+        );
+      }
+      $("#messages").append($("<hr>"));
+    });
+
+    socket.on("user disconnection", function(disconnection) {
+      console.log(disconnection.user);
+      $("#messages").append(
+        $("<li>")
+          .text(disconnection.user + " has left the chat.")
+          .css("color", disconnection.color)
+      );
+      $("#messages").append($("<hr>"));
+    });
+
+    // listen for chat message events from server-socket
+    socket.on("chat message", function(msg) {
+      var sender = msg.sender;
+      var msgBody = msg.body;
+      var color = msg.color;
+
+      if (sender === name)
+        $("#messages").append(
+          $("<li>")
+            .text("You: " + msgBody)
+            .css("color", color)
+        );
+      else
+        $("#messages").append(
+          $("<li>")
+            .text(sender + ": " + msgBody)
+            .css("color", color)
+        );
+      $("#messages").append($("<hr>"));
+      $("html,body").animate({ scrollTop: 98043280482304 }, "500000000");
+    });
+  </script>
+</html>
